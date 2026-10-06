@@ -43,5 +43,7 @@ sys/*/compile
 00_jam/*
 !00_jam/scripts/
 !00_jam/scripts/**
+!00_jam/diff/
+!00_jam/diff/**
 __pycache__
 *.pyc
