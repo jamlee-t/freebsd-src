@@ -1,0 +1,1 @@
+ qemu-system-x86_64 -m 2G -nographic -no-reboot   -drive file=/root/freebsd-src/00_jam/tmp/snapshot2.qcow2,format=qcow2,if=none,id=disk0   -device ich9-ahci,id=ahci -device ide-hd,bus=ahci.0,drive=disk0   -netdev user,id=net0,hostfwd=tcp::2222-:22   -device virtio-net-pci,netdev=net0   -boot order=c

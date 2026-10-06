@@ -1,0 +1,7 @@
+{
+  "clangd.arguments": [
+    "--query-driver=/usr/lib/llvm-21/bin/*",
+    "--background-index",
+    "--header-insertion=never"
+  ]
+}

@@ -46,8 +46,11 @@ options 	UFS_ACL			# Support for access control lists
 options 	UFS_DIRHASH		# Improve performance on big directories
 options 	UFS_GJOURNAL		# Enable gjournal-based UFS journaling
 options 	QUOTA			# Enable disk quotas for UFS
+options 	CD9660			# ISO 9660 filesystem (root on cd9660:/dev/cd0)
+options 	FFS			# Berkeley Fast Filesystem (UFS root)
 options 	MD_ROOT			# MD is a potential root device
 options 	GEOM_LABEL		# Provides labelization
+options 	GEOM_PART_GPT		# GPT partition table (single-disk boot)
 options 	COMPAT_FREEBSD32	# Compatible with i386 binaries
 options 	COMPAT_FREEBSD10	# Compatible with FreeBSD10
 options 	COMPAT_FREEBSD11	# Compatible with FreeBSD11
@@ -73,6 +76,8 @@ options 	INCLUDE_CONFIG_FILE	# Include this file in kernel
 # Debugging support.  Always need this:
 options 	KDB			# Enable kernel debugger support.
 options 	KDB_TRACE		# Print a stack trace for a panic.
+options 	DDB			# Kernel debugger (symbol lookup for VERBOSE_SYSINIT)
+options 	VERBOSE_SYSINIT		# Print every SYSINIT during boot (debug.verbose_sysinit=1)
 
 # Compression support
 options 	GZIO			# gzip (dumps)

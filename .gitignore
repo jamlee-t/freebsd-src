@@ -40,3 +40,8 @@ tags
 .ccls-cache
 sys/*/compile
 /src.conf
+00_jam/*
+!00_jam/scripts/
+!00_jam/scripts/**
+__pycache__
+*.pyc

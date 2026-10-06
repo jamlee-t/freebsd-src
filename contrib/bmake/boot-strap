@@ -461,6 +461,14 @@ op_test() {
 	test) ;;
 	*) is_newer bmake tested || return;;
 	esac
+	# 交叉构建（Linux/macOS 等非 FreeBSD 宿主）时 unit-tests 依赖 FreeBSD sh
+	# 语义（deptgt-interrupt/export/var-op-shell 等），在外部 sh 下会误报失败。
+	# 设 BMAKE_SKIP_TESTS=1 跳过（touch tested 避免反复重试）。
+	if [ -n "$BMAKE_SKIP_TESTS" ]; then
+		echo "NOTE: BMAKE_SKIP_TESTS set, skipping unit-tests"
+		touch tested
+		return
+	fi
 	Bmake test TEST_MAKE=$objdir/bmake "$@" || exit 1
 	touch tested
 }
