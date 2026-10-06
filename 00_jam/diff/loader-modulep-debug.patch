@@ -1,0 +1,168 @@
+diff --git a/stand/common/module.c b/stand/common/module.c
+index bc06ba01fa06..73c108d42a91 100644
+--- a/stand/common/module.c
++++ b/stand/common/module.c
+@@ -874,7 +874,17 @@ mod_loadkld(const char *kldname, int argc, char *argv[])
+ 		fp->f_args = unargv(argc, argv);
+ 		loadaddr_saved = loadaddr;
+ 		loadaddr = fp->f_addr + fp->f_size;
+-		file_insert_tail(fp);	/* Add to the list of loaded files */
++
++		/* jamlee debug */
++		printf("\n\n");
++		printf("[jamlee] loaded %-40s @ phys 0x%016lx  size 0x%016lx (%lu KB)\n",
++			filename, (unsigned long)fp->f_addr,
++			(unsigned long)fp->f_size,
++			(unsigned long)(fp->f_size / 1024));
++		printf("[jamlee]   next loadaddr = 0x%016lx\n",
++			(unsigned long)loadaddr);
++
++		file_insert_tail(fp);
+ 		if (file_load_dependencies(fp) != 0) {
+ 			err = ENOENT;
+ 			file_remove_tail(fp);
+@@ -882,7 +892,11 @@ mod_loadkld(const char *kldname, int argc, char *argv[])
+ 			fp = NULL;
+ 			break;
+ 		}
++
++		printf("[jamlee]   dependencies ok\n");
+ 	} while(0);
++
++
+ 	if (err == EFTYPE) {
+ 		snprintf(command_errbuf, sizeof(command_errbuf),
+ 		  "don't know how to load module '%s'", filename);
+diff --git a/stand/i386/libi386/elf64_freebsd.c b/stand/i386/libi386/elf64_freebsd.c
+index 89cc249e9d96..927ae219f729 100644
+--- a/stand/i386/libi386/elf64_freebsd.c
++++ b/stand/i386/libi386/elf64_freebsd.c
+@@ -111,6 +111,86 @@ elf64_exec(struct preloaded_file *fp)
+     printf("Start @ %#llx ...\n", ehdr->e_entry);
+ #endif
+ 
++    {
++        uint32_t *q;
++        int modno = 0;
++
++        printf("[jamlee] === modulep @ 0x%08lx ===\n",
++            (unsigned long)modulep);
++
++        q = (uint32_t *)(modulep - 0xa000);
++
++        for (;;) {
++            uint32_t type = *q;
++            uint32_t size = *(q + 1);
++            char *data = (char *)(q + 2);
++
++            if (type == MODINFO_END) {
++                printf("  MODINFO_END\n");
++                break;
++            }
++
++            if (type == MODINFO_NAME)
++                printf("\n  --- module %d ---\n", modno++);
++
++            printf("  type=0x%04x size=%4d  ", type, size);
++
++            switch (type) {
++            case MODINFO_NAME:
++                printf("NAME=\"%s\"", data);
++                break;
++            case MODINFO_TYPE:
++                printf("TYPE=\"%s\"", data);
++                break;
++            case MODINFO_ARGS:
++                printf("ARGS=\"%s\"", data);
++                break;
++            case MODINFO_ADDR: {
++                uint64_t v = *(uint64_t *)data;
++                printf("ADDR=0x%016lx", (unsigned long)v);
++                break;
++            }
++            case MODINFO_SIZE: {
++                uint64_t v = *(uint64_t *)data;
++                printf("SIZE=%lu KB",
++                    (unsigned long)(v / 1024));
++                break;
++            }
++            default:
++                if (type & MODINFO_METADATA) {
++                    uint32_t mdt = type & 0x7fff;
++                    printf("MD:");
++                    switch (mdt) {
++                    case 0x0001: printf("AOUTEXEC"); break;
++                    case 0x0002: printf("ELFHDR"); break;
++                    case 0x0003: printf("SSYM"); break;
++                    case 0x0004: printf("ESYM"); break;
++                    case 0x0005: printf("DYNAMIC"); break;
++                    case 0x0006: printf("ENVP/MB2HDR"); break;
++                    case 0x0007: printf("HOWTO"); break;
++                    case 0x0008: printf("KERNEND"); break;
++                    case 0x0009: printf("SHDR"); break;
++                    case 0x000a: printf("CTORS_ADDR"); break;
++                    case 0x000b: printf("CTORS_SIZE"); break;
++                    case 0x000c: printf("FW_HANDLE"); break;
++                    case 0x000d: printf("KEYBUF"); break;
++                    case 0x000e: printf("FONT"); break;
++                    case 0x000f: printf("SPLASH"); break;
++                    case 0x1001: printf("SMAP(e820)"); break;
++                    case 0x1002: printf("SMAP_XATTR"); break;
++                    default: printf("0x%04x", mdt);
++                    }
++                } else {
++                    printf("...");
++                }
++            }
++            printf("\n");
++
++            q = (uint32_t *)((char *)q + 8 + ((size + 7) & ~7u));
++        }
++        printf("[jamlee] === %d modules ===\n", modno);
++    }
++
+     dev_cleanup();
+     __exec((void *)VTOP(amd64_tramp), modulep, kernend);
+ 
+diff --git a/stand/i386/loader/main.c b/stand/i386/loader/main.c
+index 7538c6d4fb3f..21cd8f9d610e 100644
+--- a/stand/i386/loader/main.c
++++ b/stand/i386/loader/main.c
+@@ -267,6 +267,37 @@ main(void)
+     
+ 	bios_getsmap();
+ 
++
++    /* === jamlee debug: dump main() 此刻的全部状态 === */
++    printf("\n==================== jamlee boot state ====================\n");
++    printf(" howto        = 0x%08x", initial_howto);
++    if (initial_howto & RB_SERIAL)   printf(" [serial]");
++    if (initial_howto & RB_VERBOSE)  printf(" [verbose]");
++    if (initial_howto & RB_SINGLE)   printf(" [single-user]");
++    if (initial_howto & RB_MUTE)    printf(" [mute]");
++    if (initial_howto & RB_KDB)      printf(" [kdb]");
++    if (initial_howto & RB_PAUSE)    printf(" [pause]");
++    printf("\n");
++    printf(" bootdev      = 0x%08x\n", initial_bootdev);
++    printf(" bootflags    = 0x%08x", kargs->bootflags);
++    if (kargs->bootflags & KARGS_FLAGS_PXE)  printf(" [pxe]");
++    if (kargs->bootflags & KARGS_FLAGS_CD)   printf(" [cd]");
++    if (kargs->bootflags & KARGS_FLAGS_ZFS)  printf(" [zfs]");
++    if (kargs->bootflags & KARGS_FLAGS_GELI) printf(" [geli]");
++    if (kargs->bootflags & KARGS_FLAGS_EXTARG) printf(" [extarg]");
++    printf("\n");
++    printf(" basemem/extmem= %d KB / %d KB\n",
++        bios_basemem / 1024, bios_extmem / 1024);
++    printf(" heap         = %p .. %p (%d bytes)\n",
++        heap_bottom, heap_top, (int)((char *)heap_top - (char *)heap_bottom));
++#ifdef LOADER_ZFS_SUPPORT
++    printf(" zfs args     = %p\n", zargs);
++#endif
++    printf(" console env  = %s\n", getenv("console") ?: "(null)");
++    printf(" currdev      = %s\n", getenv("currdev") ?: "(null)");
++    printf(" loaddev      = %s\n", getenv("loaddev") ?: "(null)");
++    printf("==========================================================\n\n");
++
+ 	interact();
+ 
+ 	/* if we ever get here, it is an error */
